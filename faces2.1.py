@@ -3,6 +3,7 @@ import face_recognition
 import cv2
 import os
 import time
+from datetime import datetime, timedelta
 import shutil
 from scipy.spatial import distance as dist
 
@@ -58,7 +59,7 @@ def smile_check(res_image):
         return False
 
 
-def right_wink_check(res_image):
+def specular_right_wink_check(res_image):
     face_landmarks_list = face_recognition.face_landmarks(res_image)
     for face_landmark in face_landmarks_list:
         # get the eyes
@@ -68,14 +69,14 @@ def right_wink_check(res_image):
         apertura_sx = get_eye(occhiosx)
         apertura_dx = get_eye(occhiodx)
         # compare with estimated threshold
-        occhiolino = ((apertura_sx < 0.23) and (apertura_dx >= 0.23))
+        occhiolino = ((apertura_sx < 0.21) and (apertura_dx >= 0.26))
         # gets the time fot the facial expr. wink
         if occhiolino:
             return True
         return False
 
 
-def left_wink_check(res_image):
+def specular_left_wink_check(res_image):
     face_landmarks_list = face_recognition.face_landmarks(res_image)
     for face_landmark in face_landmarks_list:
         # get the eyes
@@ -85,11 +86,39 @@ def left_wink_check(res_image):
         apertura_sx = get_eye(occhiosx)
         apertura_dx = get_eye(occhiodx)
         # compare with estimated threshold
-        occhiolino = ((apertura_sx >= 0.23) and (apertura_dx < 0.23))
+        occhiolino = ((apertura_sx >= 0.26) and (apertura_dx < 0.21))
         # gets the time fot the facial expr. wink
         if occhiolino:
             return True
         return False
+
+
+# metodo che flagga come true se non sono ancora passati 5 minuti
+def time_flag_visitors(saved_image_name):
+    now = datetime.now()
+    now_less_five_minutes = now - timedelta(minutes=5)
+    saved_image_date = datetime.strptime(saved_image_name, "%d_%m_%Y_%H_%M_%S")
+    if now_less_five_minutes >= saved_image_date:
+        return False
+    return True
+
+
+# metodo che flagga come true se non sono ancora passati 20 secondi
+def time_flag_unknown(saved_image_name):
+    now = datetime.now()
+    now_less_twenty_seconds = now - timedelta(seconds=20)
+    saved_image_date = datetime.strptime(saved_image_name, "%d_%m_%Y_%H_%M_%S")
+    if now_less_twenty_seconds >= saved_image_date:
+        return False
+    return True
+
+
+# metodo che si occupa di preparare la stringa per la conversione a data
+def time_string_prep(the_string, folder):
+    the_proper_string = the_string.replace(f"dataset/{folder}/", "")
+    the_proper_string = the_proper_string.replace(f"dataset\\{folder}/", "")
+    the_proper_string = the_proper_string.replace(".jpg", "")
+    return the_proper_string
 
 
 webcam_capture = cv2.VideoCapture(0)
@@ -153,13 +182,13 @@ while True:
                 shown_name = target_name.replace('_', ' ')
                 label = f"{shown_name}"
 
-
-            # Caso in cui la cam individua un utente
+            # Caso in cui la cam individua un utente VISITATORE
             else:
-                print(f"{target_name}")
                 shown_name = target_name.replace('_', ' ')
                 label = f"{shown_name}"
-                if match & (target_name != "sconosciuti"):
+
+                # Il programma ricononosce un utente
+                if match & (target_name != "sconosciuti") & ('visitatore' not in target_name):
                     # se riconosce la persona recupera la password corrispondente
                     # 1 = left wink; 2 = right wink; 3 = smile
                     isExist = os.path.exists(f"passwords/{target_name}.txt")
@@ -171,14 +200,14 @@ while True:
                         if len(passcheck) < len(userpass):
                             cv2.putText(frame, f"{len(passcheck)}/{len(userpass)}", (20, 70), cv2.FONT_HERSHEY_PLAIN, 3,
                                         (255, 0, 0), 2)
-                            if left_wink_check(rgb_small_frame):
+                            if specular_left_wink_check(rgb_small_frame):
                                 passcheck = passcheck + "1"
                                 label = f"{shown_name} is left winking."
-                                print("winkwink")
-                            elif right_wink_check(rgb_small_frame):
+                                time.sleep(0.6)
+                            elif specular_right_wink_check(rgb_small_frame):
                                 label = f"{shown_name} is right winking."
                                 passcheck = passcheck + "2"
-                                time.sleep(0.5)
+                                time.sleep(0.6)
                         else:
                             if passcheck == userpass:
                                 label = f"Password corretta per {target_name}"
@@ -187,6 +216,28 @@ while True:
                                 label = f"Password errata per {target_name}"
                             passcheck = ""
                             find_a_person = True
+
+                # Caso in cui la webcam riconosce un visitatore
+                elif match & (target_name != "sconosciuti") & ('visitatore' in target_name):
+                    # Se c'è un'immagine fatta entro cinque minuti, non ne salva un'altra
+                    chrono_trigger = False
+                    for (i, item) in enumerate(list_encoding_tup):
+                        if "visitatore" in item[0]:
+                            date_string = time_string_prep(item[3], item[0])
+                            if time_flag_visitors(date_string):
+                                chrono_trigger = True
+                                break
+                    if not chrono_trigger:
+                        # salva frame
+                        snapshot = time.strftime("%d_%m_%Y_%H_%M_%S")
+                        cv2.imwrite(f"dataset/{target_name}/{snapshot}.jpg", frame)
+                        # Aggiunta alla lista delle tuple
+                        new_name = f"dataset/{target_name}/{snapshot}.jpg"
+                        target_image = face_recognition.load_image_file(new_name)
+                        target_encoding = face_recognition.face_encodings(target_image)[0]
+                        encoding_tup = (f"{target_name}", target_encoding, target_image, new_name)
+                        list_encoding_tup.append(encoding_tup)
+                        find_a_person = True
 
                 # Caso in cui la cam riconosce uno sconosciuto
                 elif match & (target_name == "sconosciuti"):
@@ -197,12 +248,13 @@ while True:
                         isExist = os.path.exists(f"dataset/visitatore{counter}")
                     new_directory = f"dataset/visitatore{counter}"
                     os.mkdir(new_directory)
-                    # TBI * salvataggio frame E spostamento immagine da sconosciuti a visitatoreX
-                    for item in list_encoding_tup:
+                    # Salvataggio frame E spostamento immagine da sconosciuti a visitatoreX
+                    for (i, item) in enumerate(list_encoding_tup):
                         if item[3] == image_name:
-                            # spostamento da folder sconosciuti a visitatoreX con rename
+                            # spostamento da folder sconosciuti a visitatoreX
                             old_name = item[3]
-                            old_photo_new_name = f"{new_directory}/visitor_old_photo.jpg"
+                            # sostituisco la stringa sconosciuti con visitatoreX
+                            old_photo_new_name = old_name.replace('sconosciuti', f'visitatore{counter}')
                             shutil.move(old_name, old_photo_new_name)
                             # creazione nuova tupla
                             old_photo_new_image = face_recognition.load_image_file(old_photo_new_name)
@@ -211,34 +263,41 @@ while True:
                                                           old_photo_new_image, old_photo_new_name)
                             list_encoding_tup.append(old_photo_new_encoding_tup)
                             # rimozione vecchia tupla
-                            list_encoding_tup.remove(item)
+                            list_encoding_tup.pop(i)
                             # salvataggio frame in visitatoreX
-                            snapshot = time.strftime("%m_%d_%Y_%H_%M_%S")
-                            new_photo_new_name = f"{new_directory}/visitor{counter}_{snapshot}.jpg"
+                            snapshot = time.strftime("%d_%m_%Y_%H_%M_%S")
+                            new_photo_new_name = f"{new_directory}/{snapshot}.jpg"
                             cv2.imwrite(new_photo_new_name, frame)
                             target_image = face_recognition.load_image_file(new_photo_new_name)
                             target_encoding = face_recognition.face_encodings(target_image)[0]
                             encoding_tup = (f"visitatore{counter}", target_encoding, target_image, new_photo_new_name)
                             list_encoding_tup.append(encoding_tup)
-                            time.sleep(1)
                     find_a_person = True
 
                 # Caso in cui la cam riconosce un nuovo sconosciuto
                 else:
-                    # Salvataggio frame in sconosciuti
-                    snapshot = time.strftime("%m_%d_%Y_%H_%M_%S")
-                    cv2.imwrite(f"dataset/sconosciuti/{snapshot}.jpg", frame)
-                    # Aggiunta alla lista delle tuple
-                    new_name = f"dataset/sconosciuti/{snapshot}.jpg"
-                    target_image = face_recognition.load_image_file(new_name)
-                    target_encoding = face_recognition.face_encodings(target_image)[0]
-                    encoding_tup = ("sconosciuti", target_encoding, target_image, new_name)
-                    list_encoding_tup.append(encoding_tup)
-                    find_a_person = True
-                    time.sleep(0.5)
+                    chrono_trigger = False
+                    for (i, item) in enumerate(list_encoding_tup):
+                        if "sconosciuti" in item[0]:
+                            date_string = time_string_prep(item[3], item[0])
+                            if time_flag_visitors(date_string):
+                                chrono_trigger = True
+                                break
+                    if not chrono_trigger:
+                        snapshot = time.strftime("%d_%m_%Y_%H_%M_%S")
+                        cv2.imwrite(f"dataset/sconosciuti/{snapshot}.jpg", frame)
+                        # Aggiunta alla lista delle tuple
+                        new_name = f"dataset/sconosciuti/{snapshot}.jpg"
+                        target_image = face_recognition.load_image_file(new_name)
+                        target_encoding = face_recognition.face_encodings(target_image)[0]
+                        encoding_tup = ("sconosciuti", target_encoding, target_image, new_name)
+                        list_encoding_tup.append(encoding_tup)
+                        find_a_person = True
+                        time.sleep(0.5)
 
         if not face_locations:
             find_a_person = True
+            passcheck = ""
 
         if face_locations:
             top, right, bottom, left = face_locations[0]
