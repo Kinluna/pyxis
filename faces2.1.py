@@ -69,7 +69,7 @@ def specular_right_wink_check(res_image):
         apertura_sx = get_eye(occhiosx)
         apertura_dx = get_eye(occhiodx)
         # compare with estimated threshold
-        occhiolino = ((apertura_sx < 0.21) and (apertura_dx >= 0.26))
+        occhiolino = ((apertura_sx < 0.23) and (apertura_dx >= 0.25))
         # gets the time fot the facial expr. wink
         if occhiolino:
             return True
@@ -86,7 +86,7 @@ def specular_left_wink_check(res_image):
         apertura_sx = get_eye(occhiosx)
         apertura_dx = get_eye(occhiodx)
         # compare with estimated threshold
-        occhiolino = ((apertura_sx >= 0.26) and (apertura_dx < 0.21))
+        occhiolino = ((apertura_sx >= 0.25) and (apertura_dx < 0.23))
         # gets the time fot the facial expr. wink
         if occhiolino:
             return True
@@ -103,12 +103,12 @@ def time_flag_visitors(saved_image_name):
     return True
 
 
-# metodo che flagga come true se non sono ancora passati 20 secondi
+# metodo che flagga come true se non sono ancora passati 2 secondi
 def time_flag_unknown(saved_image_name):
     now = datetime.now()
-    now_less_twenty_seconds = now - timedelta(seconds=20)
+    now_less_two_seconds = now - timedelta(seconds=2)
     saved_image_date = datetime.strptime(saved_image_name, "%d_%m_%Y_%H_%M_%S")
-    if now_less_twenty_seconds >= saved_image_date:
+    if now_less_two_seconds >= saved_image_date:
         return False
     return True
 
@@ -130,6 +130,7 @@ image_name = ""
 find_a_person = True
 match = False
 label = ""
+time_for_winks = time.strftime("%d_%m_%Y_%H_%M_%S")
 
 list_dir = os.listdir(dataset_path)
 list_encoding_tup = []
@@ -200,14 +201,14 @@ while True:
                         if len(passcheck) < len(userpass):
                             cv2.putText(frame, f"{len(passcheck)}/{len(userpass)}", (20, 70), cv2.FONT_HERSHEY_PLAIN, 3,
                                         (255, 0, 0), 2)
-                            if specular_left_wink_check(rgb_small_frame):
+                            if (not time_flag_unknown(time_for_winks)) & specular_left_wink_check(rgb_small_frame):
                                 passcheck = passcheck + "1"
                                 label = f"{shown_name} is left winking."
-                                time.sleep(0.6)
-                            elif specular_right_wink_check(rgb_small_frame):
+                                time_for_winks = time.strftime("%d_%m_%Y_%H_%M_%S")
+                            elif (not time_flag_unknown(time_for_winks)) & specular_right_wink_check(rgb_small_frame):
                                 label = f"{shown_name} is right winking."
                                 passcheck = passcheck + "2"
-                                time.sleep(0.6)
+                                time_for_winks = time.strftime("%d_%m_%Y_%H_%M_%S")
                         else:
                             if passcheck == userpass:
                                 label = f"Password corretta per {target_name}"
@@ -293,7 +294,6 @@ while True:
                         encoding_tup = ("sconosciuti", target_encoding, target_image, new_name)
                         list_encoding_tup.append(encoding_tup)
                         find_a_person = True
-                        time.sleep(0.5)
 
         if not face_locations:
             find_a_person = True
