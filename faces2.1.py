@@ -28,6 +28,7 @@ def wink_check(res_image):
         # calculate the aspect ratio of the eyes
         apertura_sx = get_eye(occhiosx)
         apertura_dx = get_eye(occhiodx)
+        # tester per i valori delle aperture
         print(f"Occhio sx: {apertura_sx}")
         print(f"Occhio dx: {apertura_dx}")
         # compare with estimated threshold
