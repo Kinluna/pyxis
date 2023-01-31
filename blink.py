@@ -97,7 +97,7 @@ while True:
     ret, frame = webcam_capture.read()
     # rescale del frame a 1/5 su ogni asse
     small_frame = cv2.resize(frame, None, fx=0.2, fy=0.2)
-    # conversione del colore a bgr a rgb
+    # conversione del colore da bgr a rgb
     rgb_small_frame = cv2.cvtColor(small_frame, 4)
 
     # processa il frame e trasforma l'immagine in una matrice
