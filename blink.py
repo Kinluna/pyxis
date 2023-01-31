@@ -105,7 +105,7 @@ while True:
         face_locations = face_recognition.face_locations(rgb_small_frame)
         frame_encodings = face_recognition.face_encodings(rgb_small_frame)
 
-        # se è presente un viso
+        # se è presente un metodo di cattura
         if frame_encodings:
             frame_face_encoding = frame_encodings[0]
 
