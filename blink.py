@@ -93,7 +93,7 @@ for directory in list_dir:
 process_this_frame = True
 
 while True:
-    # diminuzione del numero dei frame catturati
+    # cattura dei frame
     ret, frame = webcam_capture.read()
     # rescale del frame a 1/5 su ogni asse
     small_frame = cv2.resize(frame, None, fx=0.2, fy=0.2)
