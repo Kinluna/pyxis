@@ -206,8 +206,8 @@ while True:
                         target_encoding = face_recognition.face_encodings(target_image)[0]
                         encoding_tup = (f"{target_name}", target_encoding, target_image, new_name)
                         list_encoding_tup.append(encoding_tup)
-                        # Riattivo la ricerca di persona
-                        find_a_person = True
+                    # Riattivo la ricerca di persona
+                    find_a_person = True
 
                 # Caso in cui la cam riconosce un utente SCONOSCIUTO
                 # Uno sconosciuto è un utente che è stato registrato una sola volta dal sistema
