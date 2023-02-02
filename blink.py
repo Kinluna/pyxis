@@ -93,11 +93,11 @@ for directory in list_dir:
 process_this_frame = True
 
 while True:
-    # diminuzione del numero dei frame catturati
+    # cattura dei frame
     ret, frame = webcam_capture.read()
     # rescale del frame a 1/5 su ogni asse
     small_frame = cv2.resize(frame, None, fx=0.2, fy=0.2)
-    # conversione del colore a bgr a rgb
+    # conversione del colore da bgr a rgb
     rgb_small_frame = cv2.cvtColor(small_frame, 4)
 
     # processa il frame e trasforma l'immagine in una matrice
@@ -105,7 +105,7 @@ while True:
         face_locations = face_recognition.face_locations(rgb_small_frame)
         frame_encodings = face_recognition.face_encodings(rgb_small_frame)
 
-        # se è presente un viso
+        # se è presente un metodo di cattura
         if frame_encodings:
             frame_face_encoding = frame_encodings[0]
 
